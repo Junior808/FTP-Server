@@ -65,8 +65,24 @@ ClientConnection::~ClientConnection()
 int connect_TCP(uint32_t address, uint16_t port)
 {
     // Implement your code to define a socket here
+    struct sockaddr_in sin;
+    struct hostent *hent;
+    int s;
 
-    return -1; // You must return the socket descriptor.
+    memset(&sin, 0, sizeof(sin));
+    sin.sin_family = AF_INET;
+    sin.sin_addr.s_addr = address;
+    sin.sin_port = htons(port);
+
+    s = socket(AF_INET, SOCK_STREAM, 0);
+    if (s < 0)
+        errexit("\nNo se pudo crear el socket: %s\n", strerror(errno));
+
+    auto connect_ = connect(s, (struct sockaddr *)&sin, sizeof(sin));
+    if (connect_ < 0)
+        errexit("\nNo se pudo conectar con %d: %s\n", address, strerror(errno));
+
+    return s; // You must return the socket descriptor.
 }
 
 void ClientConnection::stop()
@@ -104,15 +120,22 @@ void ClientConnection::WaitForRequests()
         }
         else if (COMMAND("PWD"))
         {
+            auto path = get_current_dir_name();
+            fprintf(fd, "257 %s current working directory\n", path);
         }
         else if (COMMAND("PASS"))
         {
+            fscanf(fd, "%s", arg);
+            fprintf(fd, "230 User logged in, proceed\n");
         }
         else if (COMMAND("PORT"))
         {
+            fscanf(fd, "%s", arg);
+            fprintf(fd, "200 OK.\n");
         }
         else if (COMMAND("PASV"))
         {
+            fprintf(fd, "227 Entering Passive Mode.\n");
         }
         else if (COMMAND("CWD"))
         {
@@ -122,17 +145,23 @@ void ClientConnection::WaitForRequests()
         }
         else if (COMMAND("SYST"))
         {
+            fprintf(fd, "215 UNIX Type: L8.\n");
         }
         else if (COMMAND("TYPE"))
         {
+            fprintf(fd, "200 OK.\n");
         }
         else if (COMMAND("RETR"))
         {
         }
         else if (COMMAND("QUIT"))
         {
+            fprintf(fd, "221 Service closing control connection.\nLogged out if appropiate.\n");
         }
         else if (COMMAND("LIST"))
+        {
+        }
+        else if(COMMAND("get README"))
         {
         }
         else

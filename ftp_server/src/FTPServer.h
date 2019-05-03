@@ -3,10 +3,10 @@
 
 #include <list>
 
-
 #include "ClientConnection.h"
 
-class FTPServer {
+class FTPServer
+{
 public:
   FTPServer(int port = 21);
   void run();
@@ -15,7 +15,7 @@ public:
 private:
   int port;
   int msock;
-  std::list<ClientConnection*> connection_list;
+  std::list<ClientConnection *> connection_list;
 };
 
 #endif
