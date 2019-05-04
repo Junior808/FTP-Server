@@ -139,9 +139,13 @@ void ClientConnection::WaitForRequests()
         }
         else if (COMMAND("CWD"))
         {
+            fscanf(fd, "%s", arg);
+            fprintf(fd, "250 Requested file action okay, completed.\n");
         }
         else if (COMMAND("STOR"))
         {
+            //fprintf(fd, "125 Data connection already open; transfer starting.\n");
+            //fprintf(fd, "150 File status okay; about to open data connection.\n");
         }
         else if (COMMAND("SYST"))
         {
@@ -149,10 +153,13 @@ void ClientConnection::WaitForRequests()
         }
         else if (COMMAND("TYPE"))
         {
+            fscanf(fd, "%s", arg);
             fprintf(fd, "200 OK.\n");
         }
         else if (COMMAND("RETR"))
         {
+            fscanf(fd, "%s", arg);
+            fprintf(fd, "150 File status okay; about to open data connection.\n");
         }
         else if (COMMAND("QUIT"))
         {
@@ -160,8 +167,10 @@ void ClientConnection::WaitForRequests()
         }
         else if (COMMAND("LIST"))
         {
+            fscanf(fd, "%s", arg);
+            fprintf(fd, "125 Data connection already open; transfer starting.\n");
         }
-        else if(COMMAND("get README"))
+        else if (COMMAND("get README"))
         {
         }
         else
