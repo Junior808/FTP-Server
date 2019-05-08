@@ -118,7 +118,7 @@ void ClientConnection::WaitForRequests()
             fscanf(fd, "%s", arg);
             fprintf(fd, "331 User name ok, need password\n");
         }
-        else if (COMMAND("PWD"))
+        else if (COMMAND("PWD")) //Print Working directory.
         {
             auto path = get_current_dir_name();
             fprintf(fd, "257 %s current working directory\n", path);
@@ -133,34 +133,50 @@ void ClientConnection::WaitForRequests()
         }
         else if (COMMAND("PORT"))
         {
-            // uint32_t ip_addr;
-            // uint16_t port;
-            // fscanf(fd, "%d,%d,%d,%d,%d,%d", ip_addr, ip_addr << 8, ip_addr << 16, ip_addr << 24, port << 8, port);
+            /*The argument is a HOST-PORT specification for the data port
+            to be used in data connection. The fields are separated by commas.
+            A port command would be:
+            PORT h1,h2,h3,h4,p1,p2
+            where h1 is the high order 8 bits of the internet host
+            address. */
 
-            // data_socket = connect_TCP(ip_addr, port);
+            int ip_addr[4];
+            int port_[2];
+            fscanf(fd, "%d,%d,%d,%d,%d,%d", &ip_addr[0], &ip_addr[1], &ip_addr[2], &ip_addr[3], &port_[0], &port_[1]);
 
-            int ip[4];
-            int puertos[2];
-            fscanf(fd, "%d,%d,%d,%d,%d,%d", &ip[0], &ip[1], &ip[2], &ip[3], &puertos[0], &puertos[1]);
+            uint32_t address = ip_addr[0] | ip_addr[1] << 8 | ip_addr[2] << 16 | ip_addr[3] << 24;
+            uint16_t port = port_[0] << 8 | port_[1];
 
-            uint32_t ip_addr = ip[0] | ip[1] << 8 | ip[2] << 16 | ip[3]<<24;
-            uint16_t port_v = puertos[0] << 8 | puertos[1];
+            data_socket = connect_TCP(address, port);
 
-            data_socket = connect_TCP(ip_addr, port_v);
-
+            //if(data_socket > 0) ??????????
             fprintf(fd, "200 OK.\n");
         }
-        else if (COMMAND("PASV"))
+        else if (COMMAND("PASV")) //Pasive
         {
+            /*This command requests the server-DTP to "listen" on a data
+            port (which is not its default data port) and to wait for a
+            connection rather than initiate one upon receipt of a
+            transfer command. The response to this command includes the
+            host and port address this server is listening on.*/
+
             fprintf(fd, "227 Entering Passive Mode.\n");
         }
-        else if (COMMAND("CWD"))
+        else if (COMMAND("CWD"))    //Change Working Directory
         {
+            /*This command allows the user to work with a different
+            directory or dataset for file storage or retrieval without
+            altering his login or accounting information.*/
+
             fscanf(fd, "%s", arg);
             fprintf(fd, "250 Requested file action okay, completed.\n");
         }
-        else if (COMMAND("STOR"))
+        else if (COMMAND("STOR")) //Store
         {
+            /*This command causes the server-DTP to accept the data
+            transferred via the data connection and to store the data as a 
+            file at the server site.*/
+
             //fprintf(fd, "125 Data connection already open; transfer starting.\n");
             //fprintf(fd, "150 File status okay; about to open data connection.\n");
         }
@@ -168,13 +184,20 @@ void ClientConnection::WaitForRequests()
         {
             fprintf(fd, "215 UNIX Type: L8.\n");
         }
-        else if (COMMAND("TYPE"))
+        else if (COMMAND("TYPE"))   //Representation type
         {
+            /*The argument specifies the representation type as described
+            in the Section on Data Representation and Storage.*/
+
             fscanf(fd, "%s", arg);
             fprintf(fd, "200 OK.\n");
         }
-        else if (COMMAND("RETR"))
+        else if (COMMAND("RETR")) //Retrieve
         {
+            /*This command causes the server-DTP to transfer a copy of the
+            file, specified in the pathname, to the server- or user-DTP
+            at the other end of the data connection.*/
+
             fscanf(fd, "%s", arg);
             fprintf(fd, "150 File status okay; about to open data connection.\n");
         }
@@ -184,12 +207,15 @@ void ClientConnection::WaitForRequests()
         }
         else if (COMMAND("LIST"))
         {
+            /*This command causes a list to be sent from the server to the
+            passive DTP. If the pathname specifies a directory or other
+            group of files, the server should transfer a list of files
+            in the specified directory. If the pathname specifies a
+            /*file then the server should send current information on the file*/
+
             fscanf(fd, "%s", arg);
             fprintf(fd, "125 Data connection already open; transfer starting.\n");
         }
-        //else if (COMMAND("get README"))
-        //{
-        //}
         else
         {
             fprintf(fd, "502 Command not implemented.\n");
