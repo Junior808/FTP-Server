@@ -126,11 +126,28 @@ void ClientConnection::WaitForRequests()
         else if (COMMAND("PASS"))
         {
             fscanf(fd, "%s", arg);
-            fprintf(fd, "230 User logged in, proceed\n");
+            if (!strcmp(arg, "naranjito"))
+                fprintf(fd, "230 User logged in, proceed\n");
+            else
+                fprintf(fd, "530 Not logged in.\n");
         }
         else if (COMMAND("PORT"))
         {
-            fscanf(fd, "%s", arg);
+            // uint32_t ip_addr;
+            // uint16_t port;
+            // fscanf(fd, "%d,%d,%d,%d,%d,%d", ip_addr, ip_addr << 8, ip_addr << 16, ip_addr << 24, port << 8, port);
+
+            // data_socket = connect_TCP(ip_addr, port);
+
+            int ip[4];
+            int puertos[2];
+            fscanf(fd, "%d,%d,%d,%d,%d,%d", &ip[0], &ip[1], &ip[2], &ip[3], &puertos[0], &puertos[1]);
+
+            uint32_t ip_addr = ip[0] | ip[1] << 8 | ip[2] << 16 | ip[3]<<24;
+            uint16_t port_v = puertos[0] << 8 | puertos[1];
+
+            data_socket = connect_TCP(ip_addr, port_v);
+
             fprintf(fd, "200 OK.\n");
         }
         else if (COMMAND("PASV"))
@@ -170,9 +187,9 @@ void ClientConnection::WaitForRequests()
             fscanf(fd, "%s", arg);
             fprintf(fd, "125 Data connection already open; transfer starting.\n");
         }
-        else if (COMMAND("get README"))
-        {
-        }
+        //else if (COMMAND("get README"))
+        //{
+        //}
         else
         {
             fprintf(fd, "502 Command not implemented.\n");
