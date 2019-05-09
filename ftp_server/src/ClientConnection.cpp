@@ -23,7 +23,7 @@
 #include <locale.h>
 #include <langinfo.h>
 #include <fcntl.h>
-#include <unistd.h>
+#include <unistd.h> // para chdir() , cambiar de directorio
 
 #include <sys/stat.h>
 #include <iostream>
@@ -149,7 +149,7 @@ void ClientConnection::WaitForRequests()
 
             data_socket = connect_TCP(address, port);
 
-            //if(data_socket > 0) ??????????
+            //if(data_socket > 0) ?????????? // esto no hace falta
             fprintf(fd, "200 OK.\n");
         }
         else if (COMMAND("PASV")) //Pasive
@@ -169,7 +169,14 @@ void ClientConnection::WaitForRequests()
             altering his login or accounting information.*/
 
             fscanf(fd, "%s", arg);
-            fprintf(fd, "250 Requested file action okay, completed.\n");
+            int cwd = chdir(arg);
+            if(cwd < 0){
+                fprintf(fd, "501 Syntax error in parameters or arguments.");
+                errexit("\nNo se pudo cambiar el directorio actual de trabajo: %s\n", strerror(errno));
+            }
+            else{
+                fprintf(fd, "250 Requested file action okay, completed.\n");
+            }
         }
         else if (COMMAND("STOR")) //Store
         {
@@ -203,6 +210,7 @@ void ClientConnection::WaitForRequests()
         }
         else if (COMMAND("QUIT"))
         {
+            parar = true;
             fprintf(fd, "221 Service closing control connection.\nLogged out if appropiate.\n");
         }
         else if (COMMAND("LIST"))
