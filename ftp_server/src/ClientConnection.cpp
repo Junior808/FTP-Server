@@ -139,7 +139,6 @@ void ClientConnection::WaitForRequests()
             PORT h1,h2,h3,h4,p1,p2
             where h1 is the high order 8 bits of the internet host
             address. */
-
             int ip_addr[4];
             int port_[2];
             fscanf(fd, "%d,%d,%d,%d,%d,%d", &ip_addr[0], &ip_addr[1], &ip_addr[2], &ip_addr[3], &port_[0], &port_[1]);
@@ -149,7 +148,6 @@ void ClientConnection::WaitForRequests()
 
             data_socket = connect_TCP(address, port);
 
-            //if(data_socket > 0) ?????????? // esto no hace falta
             fprintf(fd, "200 OK.\n");
         }
         else if (COMMAND("PASV")) //Pasive
@@ -162,7 +160,7 @@ void ClientConnection::WaitForRequests()
 
             fprintf(fd, "227 Entering Passive Mode.\n");
         }
-        else if (COMMAND("CWD"))    //Change Working Directory
+        else if (COMMAND("CWD")) //Change Working Directory
         {
             /*This command allows the user to work with a different
             directory or dataset for file storage or retrieval without
@@ -170,11 +168,13 @@ void ClientConnection::WaitForRequests()
 
             fscanf(fd, "%s", arg);
             int cwd = chdir(arg);
-            if(cwd < 0){
+            if (cwd < 0)
+            {
                 fprintf(fd, "501 Syntax error in parameters or arguments.");
                 errexit("\nNo se pudo cambiar el directorio actual de trabajo: %s\n", strerror(errno));
             }
-            else{
+            else
+            {
                 fprintf(fd, "250 Requested file action okay, completed.\n");
             }
         }
@@ -184,14 +184,38 @@ void ClientConnection::WaitForRequests()
             transferred via the data connection and to store the data as a 
             file at the server site.*/
 
-            //fprintf(fd, "125 Data connection already open; transfer starting.\n");
-            //fprintf(fd, "150 File status okay; about to open data connection.\n");
+            fscanf(fd, "%s", arg);
+            FILE *file = fopen(arg, "wb");
+            if (!file)
+            {
+                fprintf(fd, "450 Requested file action not taken.\nFile unavailable.\n");
+                close(data_socket);
+            }
+            else
+            {
+                fprintf(fd, "150 File status okay; about to open data connection.\n");
+                char buffer[MAX_BUFF];
+                size_t receive_read = 0;
+
+
+                do
+                {
+                    receive_read = fread(buffer, 1, MAX_BUFF, file);
+
+                    write(data_socket, buffer, receive_read);
+
+                } while (receive_read == MAX_BUFF);
+
+                fprintf(fd, "226  Closing data connection.\n");
+                fclose(file);
+                close(data_socket);
+            }
         }
         else if (COMMAND("SYST"))
         {
             fprintf(fd, "215 UNIX Type: L8.\n");
         }
-        else if (COMMAND("TYPE"))   //Representation type
+        else if (COMMAND("TYPE")) //Representation type
         {
             /*The argument specifies the representation type as described
             in the Section on Data Representation and Storage.*/
@@ -206,11 +230,36 @@ void ClientConnection::WaitForRequests()
             at the other end of the data connection.*/
 
             fscanf(fd, "%s", arg);
-            fprintf(fd, "150 File status okay; about to open data connection.\n");
+            FILE *file = fopen(arg, "rb");
+            if (!file)
+            {
+                fprintf(fd, "450 Requested file action not taken.\nFile unavailable.\n");
+                close(data_socket);
+            }
+            else
+            {
+                fprintf(fd, "150 File status okay; about to open data connection.\n");
+                char buffer[MAX_BUFF];
+
+                size_t receive_read = 0;
+
+                do
+                {
+                    receive_read = fread(buffer, 1, MAX_BUFF, file);
+
+                    /*auto check_error =*/send(data_socket, buffer, receive_read, 0);
+                    //if(check_error < 0)
+
+                } while (receive_read == MAX_BUFF);
+
+                fprintf(fd, "226  Closing data connection.\n");
+                fclose(file);
+                close(data_socket);
+            }
         }
         else if (COMMAND("QUIT"))
         {
-            parar = true;
+            //parar = true;
             fprintf(fd, "221 Service closing control connection.\nLogged out if appropiate.\n");
         }
         else if (COMMAND("LIST"))
