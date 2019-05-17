@@ -126,10 +126,10 @@ void ClientConnection::WaitForRequests()
         else if (COMMAND("PASS"))
         {
             fscanf(fd, "%s", arg);
-            if (!strcmp(arg, "naranjito"))
+            //if (!strcmp(arg, "naranjito"))
                 fprintf(fd, "230 User logged in, proceed\n");
-            else
-                fprintf(fd, "530 Not logged in.\n");
+            //else
+                //fprintf(fd, "530 Not logged in.\n");
         }
         else if (COMMAND("PORT"))
         {
@@ -188,21 +188,23 @@ void ClientConnection::WaitForRequests()
             FILE *file = fopen(arg, "wb");
             if (!file)
             {
-                fprintf(fd, "450 Requested file action not taken.\nFile unavailable.\n");
+                fprintf(fd, "450 Requested file action not taken. File unavailable.\n");
                 close(data_socket);
             }
             else
             {
                 fprintf(fd, "150 File status okay; about to open data connection.\n");
+                fflush(fd);
                 char buffer[MAX_BUFF];
-                size_t receive_read = 0;
-
+                size_t receive_read;
 
                 do
                 {
-                    receive_read = fread(buffer, 1, MAX_BUFF, file);
+                    //receive_read = fread(buffer, 1, MAX_BUFF, file);
+                    receive_read = recv(data_socket, buffer, MAX_BUFF, 0);
 
-                    write(data_socket, buffer, receive_read);
+                    fwrite(buffer, 1, receive_read, file);
+                    //write(data_socket, buffer, receive_read);
 
                 } while (receive_read == MAX_BUFF);
 
@@ -270,8 +272,24 @@ void ClientConnection::WaitForRequests()
             in the specified directory. If the pathname specifies a
             /*file then the server should send current information on the file*/
 
-            fscanf(fd, "%s", arg);
+            //fscanf(fd, "%s", arg);
             fprintf(fd, "125 Data connection already open; transfer starting.\n");
+            fflush(fd);
+
+            DIR *dir = opendir(get_current_dir_name());
+            if (dir)
+            {
+                while (dir != nullptr)
+                {
+                    auto name = readdir(dir);
+
+                    fprintf(fd, "%s\t", name->d_name); //CAMBIAR
+                }
+            }
+
+            fprintf(fd, "226  Closing data connection.\n");
+            fflush(fd);
+            closedir(dir);
         }
         else
         {
