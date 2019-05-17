@@ -127,9 +127,9 @@ void ClientConnection::WaitForRequests()
         {
             fscanf(fd, "%s", arg);
             //if (!strcmp(arg, "naranjito"))
-                fprintf(fd, "230 User logged in, proceed\n");
+            fprintf(fd, "230 User logged in, proceed\n");
             //else
-                //fprintf(fd, "530 Not logged in.\n");
+            //fprintf(fd, "530 Not logged in.\n");
         }
         else if (COMMAND("PORT"))
         {
@@ -277,19 +277,31 @@ void ClientConnection::WaitForRequests()
             fflush(fd);
 
             DIR *dir = opendir(get_current_dir_name());
-            if (dir)
-            {
-                while (dir != nullptr)
-                {
-                    auto name = readdir(dir);
 
-                    fprintf(fd, "%s\t", name->d_name); //CAMBIAR
-                }
+            if (dir == NULL)
+            { // mensajito
+            }
+            else
+            {
+                struct dirent *name;
+                char buffer[MAX_BUFF];
+                size_t sz;
+
+                do {
+                    
+                    name = readdir(dir);
+                    sz = sprintf(buffer, "%s\t",name->d_name); 
+
+                    send(data_socket, buffer, sz, 0);
+
+                    // fprintf(fd, "%s\t", name->d_name); //CAMBIAR
+                } while (dir != NULL);
             }
 
             fprintf(fd, "226  Closing data connection.\n");
             fflush(fd);
             closedir(dir);
+            close(data_socket);
         }
         else
         {
