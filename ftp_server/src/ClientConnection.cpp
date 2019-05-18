@@ -33,6 +33,34 @@
 
 #include "ClientConnection.h"
 
+//
+int define_socket(int port)
+{
+    // Include the code for defining the socket.
+    struct sockaddr_in sin;
+    int s;
+
+    s = socket(AF_INET, SOCK_STREAM, 0);
+
+    if (s < 0)
+        errexit("\nNo se pudo crear el socket: %s\n", strerror(errno));
+
+    memset(&sin, 0, sizeof(sin)); //Pone  sin a 0.
+    sin.sin_family = AF_INET;
+    sin.sin_addr.s_addr = INADDR_ANY;
+    sin.sin_port = htons(port);
+
+    auto bind_ = bind(s, (struct sockaddr *)&sin, sizeof(sin));
+    if (bind_ < 0)
+        errexit("\nNo se pudo hacer el bind con el puerto: %s\n", strerror(errno));
+
+    if (listen(s, 5) < 0)
+        errexit("\nFallo en el listen: %s\n", strerror(errno));
+
+    return s;
+}
+//
+
 ClientConnection::ClientConnection(int s)
 {
     int sock = (int)(s);
@@ -157,8 +185,31 @@ void ClientConnection::WaitForRequests()
             connection rather than initiate one upon receipt of a
             transfer command. The response to this command includes the
             host and port address this server is listening on.*/
+            printf("ERROR0");
+            
+            int s = define_socket(0);
+            struct sockaddr_in sin;
+            socklen_t len = sizeof(sin);
+
+            printf("ERROR1");
+
+            getsockname(s, (struct sockaddr *)&sin, &len);
+
+            printf("ERROR2");
+
+            uint16_t port = sin.sin_port;
+            int p1 = port >> 8;
+            int p2 = port & 0xFF;
+
+            printf("ERROR3");
+
+            data_socket = accept(s, (struct sockaddr *)&sin, &len);
+
+            printf("ERROR4");
 
             fprintf(fd, "227 Entering Passive Mode.\n");
+            fflush(fd);
+            close(data_socket);
         }
         else if (COMMAND("CWD")) //Change Working Directory
         {
@@ -261,8 +312,8 @@ void ClientConnection::WaitForRequests()
         }
         else if (COMMAND("QUIT"))
         {
-            //parar = true;
             fprintf(fd, "221 Service closing control connection.\nLogged out if appropiate.\n");
+            // parar = true;
         }
         else if (COMMAND("LIST"))
         {
@@ -287,10 +338,11 @@ void ClientConnection::WaitForRequests()
                 char buffer[MAX_BUFF];
                 size_t sz;
 
-                do {
-                    
+                do
+                {
+
                     name = readdir(dir);
-                    sz = sprintf(buffer, "%s\t",name->d_name); 
+                    sz = sprintf(buffer, "%s\t", name->d_name);
 
                     send(data_socket, buffer, sz, 0);
 
