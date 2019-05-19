@@ -207,12 +207,12 @@ void ClientConnection::WaitForRequests()
             fflush(fd);
 
             len = sizeof(sin);
+            close(data_socket);
             data_socket = accept(s, (struct sockaddr *)&sin, &len);
 
             //printf("ERROR4");
 
             //data_socket = accept(s, (struct sockaddr *)&sin, &len);
-            //close(data_socket);
         }
         else if (COMMAND("CWD")) //Change Working Directory
         {
@@ -296,6 +296,7 @@ void ClientConnection::WaitForRequests()
             else
             {
                 fprintf(fd, "150 File status okay; about to open data connection.\n");
+                fflush(fd);
                 char buffer[MAX_BUFF];
 
                 size_t receive_read = 0;
