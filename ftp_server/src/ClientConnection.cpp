@@ -185,31 +185,34 @@ void ClientConnection::WaitForRequests()
             connection rather than initiate one upon receipt of a
             transfer command. The response to this command includes the
             host and port address this server is listening on.*/
-            printf("ERROR0");
-            
+            //printf("ERROR0");
+
             int s = define_socket(0);
             struct sockaddr_in sin;
             socklen_t len = sizeof(sin);
 
-            printf("ERROR1");
+            //printf("ERROR1");
 
             getsockname(s, (struct sockaddr *)&sin, &len);
 
-            printf("ERROR2");
+            //printf("ERROR2");
 
             uint16_t port = sin.sin_port;
             int p1 = port >> 8;
             int p2 = port & 0xFF;
 
-            printf("ERROR3");
+            //printf("ERROR3");
 
+            fprintf(fd, "227 Entering Passive Mode (127,0,0,1,%d,%d).\n", p1, p2);
+            fflush(fd);
+
+            len = sizeof(sin);
             data_socket = accept(s, (struct sockaddr *)&sin, &len);
 
-            printf("ERROR4");
+            //printf("ERROR4");
 
-            fprintf(fd, "227 Entering Passive Mode.\n");
-            fflush(fd);
-            close(data_socket);
+            //data_socket = accept(s, (struct sockaddr *)&sin, &len);
+            //close(data_socket);
         }
         else if (COMMAND("CWD")) //Change Working Directory
         {
@@ -232,7 +235,7 @@ void ClientConnection::WaitForRequests()
         else if (COMMAND("STOR")) //Store
         {
             /*This command causes the server-DTP to accept the data
-            transferred via the data connection and to store the data as a 
+            transferred via the data connection and to store the data as a
             file at the server site.*/
 
             fscanf(fd, "%s", arg);
@@ -275,6 +278,7 @@ void ClientConnection::WaitForRequests()
 
             fscanf(fd, "%s", arg);
             fprintf(fd, "200 OK.\n");
+            fflush(fd);
         }
         else if (COMMAND("RETR")) //Retrieve
         {
@@ -328,29 +332,37 @@ void ClientConnection::WaitForRequests()
             fflush(fd);
 
             DIR *dir = opendir(get_current_dir_name());
+            char *file_name;
+            struct dirent *dir_entry;
 
             if (dir == NULL)
             { // mensajito
             }
             else
             {
-                struct dirent *name;
-                char buffer[MAX_BUFF];
-                size_t sz;
-
-                do
+                while ((dir_entry = readdir(dir)) != NULL)
                 {
+                    file_name = dir_entry->d_name;
+                    fprintf(fd, "%s\n", file_name);
+                }
 
-                    name = readdir(dir);
-                    sz = sprintf(buffer, "%s\t", name->d_name);
+                // struct dirent *name;
+                // char buffer[MAX_BUFF];
+                // size_t sz;
 
-                    send(data_socket, buffer, sz, 0);
+                // do
+                // {
 
-                    // fprintf(fd, "%s\t", name->d_name); //CAMBIAR
-                } while (dir != NULL);
+                //     name = readdir(dir);
+                //     sz = sprintf(buffer, "%s\t", name->d_name);
+
+                //     send(data_socket, buffer, sz, 0);
+
+                //     // fprintf(fd, "%s\t", name->d_name); //CAMBIAR
+                // } while (dir != NULL);
             }
 
-            fprintf(fd, "226  Closing data connection.\n");
+            fprintf(fd, "250 List completed successfully.\n");
             fflush(fd);
             closedir(dir);
             close(data_socket);
