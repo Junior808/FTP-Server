@@ -187,9 +187,9 @@ void ClientConnection::WaitForRequests()
             host and port address this server is listening on.*/
             //printf("ERROR0");
 
-            int s = define_socket(0);
             struct sockaddr_in sin;
             socklen_t len = sizeof(sin);
+            int s = define_socket(0);
 
             //printf("ERROR1");
 
@@ -198,8 +198,8 @@ void ClientConnection::WaitForRequests()
             //printf("ERROR2");
 
             uint16_t port = sin.sin_port;
-            int p1 = port >> 8;
-            int p2 = port & 0xFF;
+            int p1 = port & 0xFF;
+            int p2 = port >> 8;
 
             //printf("ERROR3");
 
@@ -207,8 +207,8 @@ void ClientConnection::WaitForRequests()
             fflush(fd);
 
             len = sizeof(sin);
-            close(data_socket);
             data_socket = accept(s, (struct sockaddr *)&sin, &len);
+            close(data_socket);
 
             //printf("ERROR4");
 
@@ -328,39 +328,39 @@ void ClientConnection::WaitForRequests()
             in the specified directory. If the pathname specifies a
             /*file then the server should send current information on the file*/
 
-            //fscanf(fd, "%s", arg);
+            // fscanf(fd, "%s", arg);
             fprintf(fd, "125 Data connection already open; transfer starting.\n");
             fflush(fd);
 
+
+            // DIR *dir;
+            // if(arg != ""){
+            //     dir = opendir(arg);
+            // }
+            // else
+            // {
+            //     dir = opendir(get_current_dir_name());
+            // }
+            
             DIR *dir = opendir(get_current_dir_name());
             char *file_name;
             struct dirent *dir_entry;
 
+            size_t sz;
+            char buffer[MAX_BUFF];
+
             if (dir == NULL)
-            { // mensajito
+            {
+                fprintf(fd, "450 Requested file action not taken. File unavailable.\n");
+                close(data_socket);
             }
             else
             {
                 while ((dir_entry = readdir(dir)) != NULL)
                 {
-                    file_name = dir_entry->d_name;
-                    fprintf(fd, "%s\n", file_name);
+                    sz = sprintf(buffer, "%s\n", dir_entry->d_name); // introduce en el buffer lo que ha leído 
+                    send(data_socket, buffer, sz, 0);
                 }
-
-                // struct dirent *name;
-                // char buffer[MAX_BUFF];
-                // size_t sz;
-
-                // do
-                // {
-
-                //     name = readdir(dir);
-                //     sz = sprintf(buffer, "%s\t", name->d_name);
-
-                //     send(data_socket, buffer, sz, 0);
-
-                //     // fprintf(fd, "%s\t", name->d_name); //CAMBIAR
-                // } while (dir != NULL);
             }
 
             fprintf(fd, "250 List completed successfully.\n");
