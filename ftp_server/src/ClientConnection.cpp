@@ -322,6 +322,15 @@ void ClientConnection::WaitForRequests()
             fprintf(fd, "125 Data connection already open; transfer starting.\n");
             fflush(fd);
 
+
+            // DIR *dir;
+            // if(arg != "."){
+            //     dir = opendir(arg);
+            // }
+            // else
+            // {
+            //     dir = opendir(get_current_dir_name());
+            // }
             DIR *dir = opendir(get_current_dir_name());
             char *file_name;
             struct dirent *dir_entry;
