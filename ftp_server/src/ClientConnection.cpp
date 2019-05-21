@@ -191,28 +191,18 @@ void ClientConnection::WaitForRequests()
             socklen_t len = sizeof(sin);
             int s = define_socket(0);
 
-            //printf("ERROR1");
-
             getsockname(s, (struct sockaddr *)&sin, &len);
-
-            //printf("ERROR2");
 
             uint16_t port = sin.sin_port;
             int p1 = port & 0xFF;
             int p2 = port >> 8;
-
-            //printf("ERROR3");
 
             fprintf(fd, "227 Entering Passive Mode (127,0,0,1,%d,%d).\n", p1, p2);
             fflush(fd);
 
             len = sizeof(sin);
             data_socket = accept(s, (struct sockaddr *)&sin, &len);
-            close(data_socket);
 
-            //printf("ERROR4");
-
-            //data_socket = accept(s, (struct sockaddr *)&sin, &len);
         }
         else if (COMMAND("CWD")) //Change Working Directory
         {
@@ -332,16 +322,6 @@ void ClientConnection::WaitForRequests()
             fprintf(fd, "125 Data connection already open; transfer starting.\n");
             fflush(fd);
 
-
-            // DIR *dir;
-            // if(arg != ""){
-            //     dir = opendir(arg);
-            // }
-            // else
-            // {
-            //     dir = opendir(get_current_dir_name());
-            // }
-            
             DIR *dir = opendir(get_current_dir_name());
             char *file_name;
             struct dirent *dir_entry;
