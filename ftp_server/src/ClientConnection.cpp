@@ -43,7 +43,7 @@ int define_socket(int port)
     s = socket(AF_INET, SOCK_STREAM, 0);
 
     if (s < 0)
-        errexit("\nNo se pudo crear el socket: %s\n", strerror(errno));
+        errexit("\nThe socket could not be created: %s\n", strerror(errno));
 
     memset(&sin, 0, sizeof(sin)); //Pone  sin a 0.
     sin.sin_family = AF_INET;
@@ -52,10 +52,10 @@ int define_socket(int port)
 
     auto bind_ = bind(s, (struct sockaddr *)&sin, sizeof(sin));
     if (bind_ < 0)
-        errexit("\nNo se pudo hacer el bind con el puerto: %s\n", strerror(errno));
+        errexit("\nThe bind could not be made with the port: %s\n", strerror(errno));
 
     if (listen(s, 5) < 0)
-        errexit("\nFallo en el listen: %s\n", strerror(errno));
+        errexit("\nFailed on the 'listen': %s\n", strerror(errno));
 
     return s;
 }
@@ -104,11 +104,11 @@ int connect_TCP(uint32_t address, uint16_t port)
 
     s = socket(AF_INET, SOCK_STREAM, 0);
     if (s < 0)
-        errexit("\nNo se pudo crear el socket: %s\n", strerror(errno));
+        errexit("\nThe socket could not be created: %s\n", strerror(errno));
 
     auto connect_ = connect(s, (struct sockaddr *)&sin, sizeof(sin));
     if (connect_ < 0)
-        errexit("\nNo se pudo conectar con %d: %s\n", address, strerror(errno));
+        errexit("\nCould not connect with %d: %s\n", address, strerror(errno));
 
     return s; // You must return the socket descriptor.
 }
@@ -119,6 +119,15 @@ void ClientConnection::stop()
     close(control_socket);
     parar = true;
 }
+
+#define CHECK_LOGIN                              \
+    {                                            \
+        if (!logged_in)                           \
+        {                                        \
+            fprintf(fd, "530 Not logged in.\n"); \
+            continue;                            \
+        }                                        \
+    }
 
 #define COMMAND(cmd) strcmp(command, cmd) == 0
 
@@ -137,6 +146,8 @@ void ClientConnection::WaitForRequests()
 
     fprintf(fd, "220 Service ready\n");
 
+    bool logged_in = false;
+    std::string user_name = "alu";
     while (!parar)
     {
 
@@ -144,32 +155,43 @@ void ClientConnection::WaitForRequests()
         if (COMMAND("USER"))
         {
             fscanf(fd, "%s", arg);
-            fprintf(fd, "331 User name ok, need password\n");
-        }
-        else if (COMMAND("PWD")) //Print Working directory.
-        {
-            auto path = get_current_dir_name();
-            fprintf(fd, "257 %s current working directory\n", path);
+            if (!strncmp(arg, user_name.c_str(), strlen(user_name.c_str())))
+            {
+                fprintf(fd, "331 User name ok, need password\n");
+                logged_in = true;
+            }
+            else
+            {
+                fprintf(fd, "530 Not logged in.\n");
+                logged_in = false;
+            }
         }
         else if (COMMAND("PASS"))
         {
             fscanf(fd, "%s", arg);
-            //if (!strcmp(arg, "naranjito"))
-            fprintf(fd, "230 User logged in, proceed\n");
-            //else
-            //fprintf(fd, "530 Not logged in.\n");
+            if (!strcmp(arg, "naranjito"))
+                fprintf(fd, "230 User logged in, proceed\n");
+            else
+            {
+                fprintf(fd, "530 Not logged in.\n");
+                logged_in = false;
+            }
         }
         else if (COMMAND("PORT"))
         {
+
             /*The argument is a HOST-PORT specification for the data port
             to be used in data connection. The fields are separated by commas.
             A port command would be:
             PORT h1,h2,h3,h4,p1,p2
             where h1 is the high order 8 bits of the internet host
             address. */
+
             int ip_addr[4];
             int port_[2];
             fscanf(fd, "%d,%d,%d,%d,%d,%d", &ip_addr[0], &ip_addr[1], &ip_addr[2], &ip_addr[3], &port_[0], &port_[1]);
+
+            CHECK_LOGIN;
 
             uint32_t address = ip_addr[0] | ip_addr[1] << 8 | ip_addr[2] << 16 | ip_addr[3] << 24;
             uint16_t port = port_[0] << 8 | port_[1];
@@ -185,7 +207,8 @@ void ClientConnection::WaitForRequests()
             connection rather than initiate one upon receipt of a
             transfer command. The response to this command includes the
             host and port address this server is listening on.*/
-            //printf("ERROR0");
+
+            CHECK_LOGIN;
 
             struct sockaddr_in sin;
             socklen_t len = sizeof(sin);
@@ -202,7 +225,13 @@ void ClientConnection::WaitForRequests()
 
             len = sizeof(sin);
             data_socket = accept(s, (struct sockaddr *)&sin, &len);
+        }
+        else if (COMMAND("PWD")) //Print Working directory.
+        {
+            CHECK_LOGIN;
 
+            auto path = get_current_dir_name();
+            fprintf(fd, "257 %s current working directory\n", path);
         }
         else if (COMMAND("CWD")) //Change Working Directory
         {
@@ -211,11 +240,14 @@ void ClientConnection::WaitForRequests()
             altering his login or accounting information.*/
 
             fscanf(fd, "%s", arg);
+
+            CHECK_LOGIN;
+
             int cwd = chdir(arg);
             if (cwd < 0)
             {
                 fprintf(fd, "501 Syntax error in parameters or arguments.");
-                errexit("\nNo se pudo cambiar el directorio actual de trabajo: %s\n", strerror(errno));
+                errexit("\nThe current working directory could not be changed: %s\n", strerror(errno));
             }
             else
             {
@@ -229,6 +261,9 @@ void ClientConnection::WaitForRequests()
             file at the server site.*/
 
             fscanf(fd, "%s", arg);
+
+            CHECK_LOGIN;
+
             FILE *file = fopen(arg, "wb");
             if (!file)
             {
@@ -257,19 +292,6 @@ void ClientConnection::WaitForRequests()
                 close(data_socket);
             }
         }
-        else if (COMMAND("SYST"))
-        {
-            fprintf(fd, "215 UNIX Type: L8.\n");
-        }
-        else if (COMMAND("TYPE")) //Representation type
-        {
-            /*The argument specifies the representation type as described
-            in the Section on Data Representation and Storage.*/
-
-            fscanf(fd, "%s", arg);
-            fprintf(fd, "200 OK.\n");
-            fflush(fd);
-        }
         else if (COMMAND("RETR")) //Retrieve
         {
             /*This command causes the server-DTP to transfer a copy of the
@@ -277,6 +299,9 @@ void ClientConnection::WaitForRequests()
             at the other end of the data connection.*/
 
             fscanf(fd, "%s", arg);
+
+            CHECK_LOGIN;
+
             FILE *file = fopen(arg, "rb");
             if (!file)
             {
@@ -305,10 +330,28 @@ void ClientConnection::WaitForRequests()
                 close(data_socket);
             }
         }
+        else if (COMMAND("SYST"))
+        {
+            CHECK_LOGIN;
+
+            fprintf(fd, "215 UNIX Type: L8.\n");
+        }
+        else if (COMMAND("TYPE")) //Representation type
+        {
+            /*The argument specifies the representation type as described
+            in the Section on Data Representation and Storage.*/
+
+            fscanf(fd, "%s", arg);
+
+            CHECK_LOGIN;
+
+            fprintf(fd, "200 OK.\n");
+            fflush(fd);
+        }
         else if (COMMAND("QUIT"))
         {
             fprintf(fd, "221 Service closing control connection.\nLogged out if appropiate.\n");
-            // parar = true;
+            parar = true;
         }
         else if (COMMAND("LIST"))
         {
@@ -319,18 +362,12 @@ void ClientConnection::WaitForRequests()
             /*file then the server should send current information on the file*/
 
             // fscanf(fd, "%s", arg);
+
+            CHECK_LOGIN;
+
             fprintf(fd, "125 Data connection already open; transfer starting.\n");
             fflush(fd);
 
-
-            // DIR *dir;
-            // if(arg != "."){
-            //     dir = opendir(arg);
-            // }
-            // else
-            // {
-            //     dir = opendir(get_current_dir_name());
-            // }
             DIR *dir = opendir(get_current_dir_name());
             char *file_name;
             struct dirent *dir_entry;
@@ -347,7 +384,7 @@ void ClientConnection::WaitForRequests()
             {
                 while ((dir_entry = readdir(dir)) != NULL)
                 {
-                    sz = sprintf(buffer, "%s\n", dir_entry->d_name); // introduce en el buffer lo que ha leído 
+                    sz = sprintf(buffer, "%s\n", dir_entry->d_name); // introduce en el buffer lo que ha leído
                     send(data_socket, buffer, sz, 0);
                 }
             }
@@ -359,10 +396,12 @@ void ClientConnection::WaitForRequests()
         }
         else
         {
+            CHECK_LOGIN;
+
             fprintf(fd, "502 Command not implemented.\n");
             fflush(fd);
-            printf("Comando : %s %s\n", command, arg);
-            printf("Error interno del servidor\n");
+            printf("Command : %s %s\n", command, arg);
+            printf("Internal Server Error\n");
         }
     }
 
